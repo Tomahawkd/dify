@@ -5,7 +5,7 @@ import useOutputVarList from '../_base/hooks/use-output-var-list'
 import { BlockEnum, VarType } from '../../types'
 import type { Var, Variable } from '../../types'
 import { useStore } from '../../store'
-import type { CodeNodeType, OutputVar } from './types'
+import type { CodeDependency, CodeNodeType, OutputVar } from './types'
 import { CodeLanguage } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
@@ -55,6 +55,45 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     inputs,
     setInputs,
   })
+
+  const handleAddDependency = useCallback((dependency: CodeDependency) => {
+    const newInputs = produce(inputs, (draft) => {
+      if (!draft.dependencies)
+        draft.dependencies = []
+      draft.dependencies.push(dependency)
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleRemoveDependency = useCallback((index: number) => {
+    const newInputs = produce(inputs, (draft) => {
+      if (!draft.dependencies)
+        draft.dependencies = []
+      draft.dependencies.splice(index, 1)
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleChangeDependency = useCallback((index: number, dependency: CodeDependency) => {
+    const newInputs = produce(inputs, (draft) => {
+      if (!draft.dependencies)
+        draft.dependencies = []
+      draft.dependencies[index] = dependency
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const [allowDependencies, setAllowDependencies] = useState<boolean>(false)
+  useEffect(() => {
+    if (!inputs.code_language)
+      return
+    if (inputs.code_language !== CodeLanguage.python3) {
+      setAllowDependencies(false)
+      return
+    }
+
+    setAllowDependencies(true)
+  }, [inputs.code_language])
 
   const [outputKeyOrders, setOutputKeyOrders] = useState<string[]>([])
   const syncOutputKeyOrders = useCallback((outputs: OutputVar) => {
@@ -203,6 +242,10 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     hideRemoveVarConfirm,
     onRemoveVarConfirm,
     handleCodeAndVarsChange,
+    allowDependencies,
+    handleAddDependency,
+    handleRemoveDependency,
+    handleChangeDependency,
   }
 }
 

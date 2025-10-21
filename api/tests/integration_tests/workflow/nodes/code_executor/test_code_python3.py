@@ -1,6 +1,7 @@
 from textwrap import dedent
 
 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
+from core.helper.code_executor.entities import CodeDependency
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
 
@@ -34,3 +35,10 @@ def test_python3_get_runner_script():
     assert runner_script.count(Python3TemplateTransformer._code_placeholder) == 1
     assert runner_script.count(Python3TemplateTransformer._inputs_placeholder) == 1
     assert runner_script.count(Python3TemplateTransformer._result_tag) == 2
+
+
+def test_python3_with_dependencies():
+    code = "print(yaml.safe_load('a: \n    b')['a']"
+    deps = [CodeDependency(name="pyyaml", version="")]
+    result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload="", code=code, dependencies=deps)
+    assert result == "b"

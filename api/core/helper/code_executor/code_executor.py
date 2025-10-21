@@ -2,13 +2,14 @@ import logging
 from collections.abc import Mapping
 from enum import StrEnum
 from threading import Lock
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 from pydantic import BaseModel
 from yarl import URL
 
 from configs import dify_config
+from core.helper.code_executor.entities import CodeDependency
 from core.helper.code_executor.javascript.javascript_transformer import NodeJsTemplateTransformer
 from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
 from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
@@ -72,12 +73,17 @@ class CodeExecutor:
     supported_dependencies_languages: set[CodeLanguage] = {CodeLanguage.PYTHON3}
 
     @classmethod
-    def execute_code(cls, language: CodeLanguage, preload: str, code: str) -> str:
+    def execute_code(cls,
+                     language: CodeLanguage,
+                     preload: str,
+                     code: str,
+                     dependencies: Optional[list[CodeDependency]] = None) -> str:
         """
         Execute code
         :param language: code language
         :param preload: the preload script
         :param code: code
+        :param dependencies: dependencies
         :return:
         """
         url = code_execution_endpoint_url / "v1" / "sandbox" / "run"
@@ -90,6 +96,11 @@ class CodeExecutor:
             "preload": preload,
             "enable_network": True,
         }
+
+        if dependencies is not None:
+            if language not in CodeExecutor.supported_dependencies_languages:
+                raise CodeExecutionError(f"Custom dependencies is not supported in {language.value}")
+            data['dependencies'] = [dependency.model_dump() for dependency in dependencies]
 
         timeout = httpx.Timeout(
             connect=dify_config.CODE_EXECUTION_CONNECT_TIMEOUT,
@@ -139,12 +150,17 @@ class CodeExecutor:
         return response_code.data.stdout or ""
 
     @classmethod
-    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: Mapping[str, Any]):
+    def execute_workflow_code_template(cls,
+                                       language: CodeLanguage,
+                                       code: str,
+                                       inputs: Mapping[str, Any],
+                                       dependencies: Optional[list[CodeDependency]] = None):
         """
         Execute code
         :param language: code language
         :param code: code
         :param inputs: inputs
+        :param dependencies: dependencies
         :return:
         """
         template_transformer = cls.code_template_transformers.get(language)
@@ -154,7 +170,7 @@ class CodeExecutor:
         runner, preload = template_transformer.transform_caller(code, inputs)
 
         try:
-            response = cls.execute_code(language, preload, runner)
+            response = cls.execute_code(language, preload, runner, dependencies)
         except CodeExecutionError as e:
             raise e
 

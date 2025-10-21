@@ -45,3 +45,12 @@ class TestPython3CodeExecutor(CodeExecutorTestMixin):
         assert runner_script.count(Python3TemplateTransformer._code_placeholder) == 1
         assert runner_script.count(Python3TemplateTransformer._inputs_placeholder) == 1
         assert runner_script.count(Python3TemplateTransformer._result_tag) == 2
+
+    def test_python3_with_dependencies(self, flask_app_with_containers):
+        """Test Python3 workflow code template execution with custom dependencies"""
+        CodeExecutor, CodeLanguage = self.code_executor_imports
+        from core.helper.code_executor.entities import CodeDependency
+        code = "print(yaml.safe_load('a: \n    b')['a']"
+        deps = [CodeDependency(name="pyyaml", version="")]
+        result = CodeExecutor.execute_code(language=CodeLanguage.PYTHON3, preload="", code=code, dependencies=deps)
+        assert result == "b"

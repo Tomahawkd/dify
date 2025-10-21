@@ -21,4 +21,5 @@ export type CodeNodeType = CommonNodeType & {
   code_language: CodeLanguage
   code: string
   outputs: OutputVar
+  dependencies?: CodeDependency[]
 }
